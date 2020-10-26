@@ -1,13 +1,33 @@
+# Chapter 1 - Warmup
+## Feelings and expectations
 
-# About the project
+I'm quite excited to participate in this course. I've already used _R_ and _R Markdown_ before but I know my way of coding is not efficient or clean. This is why I expect to learn better methods to use _R_, _R Markdown_ and other tools introduced during the next month or so.
 
-*Write a short description about the course and add a link to your GitHub repository here. This is an R Markdown (.Rmd) file so you should use R Markdown syntax.*
+My PhD supervisor told me about this course because she thought I could greatly benefit from this.
 
+Just a sidenote about my name. I'll sign with the names **Kuunsäde** or **Kuutis** because those are what I'm called nowadays. However, my legal name is Stina (but hopefully not for long). I hope this won't confuse anyone!
+
+## Link to GitHub repository
+
+Just click the link below.
+
+https://github.com/kuunsade/IODS-project
+
+## Trying this for fun
 ```{r}
-# This is a so-called "R chunk" where you can write R code.
+# I want to print out today's date
 
 date()
 
 ```
-The text continues here.
+I did it. Hooray!
+
+## Creating a list
+
+Let's try this out.
+
+- First point
+- Second point
+- Third point
+
 
