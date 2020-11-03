@@ -1,13 +1,100 @@
-# Insert chapter 2 title here
+# Chapter 2 - Data wrangling and analysis
 
-*Describe the work you have done this week and summarize your learning.*
+## Introducing the data
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
+First we read the students2014 data, which is provided in a website. After that, we look at what the data consist of.
 
-```{r}
-date()
+```{r, echo = FALSE}
+library(knitr)
 ```
 
-Here we go again...
+```{r}
+# Download the data
+
+students2014 <- read.table("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/learning2014.txt ", sep=",", header=TRUE)
+
+# First look at the data
+
+head(students2014)
+
+# Look at the dimensions and structures of the data
+
+dim(students2014)
+str(students2014)
+```
+
+So the data include:
+
+- demographic information about students (age, gender)
+- the student's attitude score towards statistics based on a questionnare (attitude)
+- student exam points (points)
+- student scores on deep learning based on a questionnare (deep) 
+- student scores on strategic learning based on a questionnare (stra)
+- student scores on surface-level learning based on a questionnare (surf)
+
+The data frame has 166 observations (rows) and 7 variables (columns). When we take a look at the structure, most individual observations are numerical. Two columns include integers (age, points) and one includes factors (gender).
+
+Let's look at a summary of the observations.
+
+```{r}
+summary(students2014)
+```
+
+Most of the students are women and most students are in their 20s. The oldest student is 55 years old. Based on the summary, attitude, deep, strategic and surface scores have a scale from 1-5. The highest exam points has been 33 points, and most of the points were above 20. 
+
+## Graphical overview of the data
+
+Let's plot the whole dataset to get a general idea, how the data behave in pairs.
+```{r}
+plot(students2014[-1], col = students2014$gender)
+```
+
+This plot can be used to observe possible trends. We are interested in discovering which variable contributes to high or low exam points. For this reason, we'll take a look at the last row or at the right most column, since exam points are paired to other variables on those sets. For example, on the second column's (attitude) last row (points) we see some form of correlation. The data points scew from the lower left corner to the upper right corner in a similar fashion to a trend line, giving us a clue that the exam points seem to be high (or low) when the attitude scores are high (or low). A similar trend might be seen in the fifth column's fourth row (stra).
+
+We can use ggplot2 and GGally packages to generate a more advanced plot. Disregard the "upper" part inside the ggpairs command if you're not using Linux. Otherwise FYI for Linux users: Ubuntu has some font issues with GGally and that part of the code is a workaround.
+
+```{r, message = FALSE}
+library(ggplot2)
+library(GGally)
+
+plot <- ggpairs(students2014, mapping = aes(col=gender, alpha = 0.3), upper = list(continuous = "cor_v1_5"), lower = list(combo = wrap("facethist", bins = 20)))
+
+plot
+```
+
+We get some additional information out of this plot. It is important to look at the correlation values (Corr). The higher the absolute value, the greater the correlation between the variables. We observe that points and attitude have a positive correlation value of 0.437, which is the highest in this dataset. Other correlations worth noting are strategic and surface, which both have approximately a 0.14 value. Surface scores correlate negatively with points since the value is negative.
+
+## Regression model
+
+Since attitude, surf and stra are most correlated with points, we'll fit a linear model on these variables. Our variable of interest is points (y) and our explanatory variables (x1, x2, x3) are attitude, stra and surf.
+
+```{r}
+model <- lm(points ~ attitude + surf + stra, data = students2014)
+
+summary(model)
+```
+Considering explanatory variables, we see from the summary that only attitude has a significant correlation (p < 0.001) with points. Surf and stra don't correlate significantly with points. We'll run the model again with attitude only, since surf and stra were unnecessarily included.
+
+```{r}
+model <- lm(points ~ attitude, data = students2014)
+
+summary(model)
+```
+The p value became slightly more significant compared to our previous model. Additionally, we observe that attitude has a positive correlation with points since the estimate value is greater than zero. The intercept refers to the point where the regression line intercepts with y axis, so when x (attitude) is zero, y (points) is 11.6372. The intercept value is statistically significant (p < 0.001).
+
+## Model diagnostics
+
+To confirm our model works for our data, we'll run some diagnostics. Let's generate the plots first.
+
+```{r}
+par(mfrow = c(2,2))
+plot(model, which = c(1,2,5))
+```
+
+Linear model assumes the residuals are normally distributed with a constant variance and that the residuals don't correlate. From the Residuals vs. Fitted plot we observe that the data points vary in a quite random fashion. For example, if the data points were more close to each other on the left side but scattered on the right side, we would have a problem.
+
+Q-Q plot can be used to confirm the normality assumption: the better the points fall on the line, the better the model fit. Some of the points in the beginning and end of the line stray, but overall the points follow our dashes quite nicely.
+
+Residuals vs. Leverage is used for the dependacy assumption. We can to identify outliers if necessary. In our plot, there are no identifiable outliers, since the data points are fairly close to each other, which the x axis values confirm. If the x axis values were greater and there was a single point far away from the other data points, we would have to reconsider our model.
+
+Overall, our diagnostics show that our linear model can be used to fit the data.
