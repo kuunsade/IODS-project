@@ -1,0 +1,125 @@
+# Chapter 3 - Logistic regression
+
+Let's download the data we're using for this exercise and explore the structure.
+```{r}
+student_alc <- read.table("pormath.txt")
+
+dim(student_alc)
+str(student_alc)
+head(student_alc)
+```
+The dataset includes student performance information in secondary education of two Portuguese schools. We have 370 students (rows or observations) and 51 attributes (columns or variables). These 51 variables include sex, grades (G1, G2, G3), age, school, and information about the student's social and family factors. Two distinct school subjects were of interest: math and Portuguese language. 
+
+More details about the dataset can be found here: https://archive.ics.uci.edu/ml/datasets/Student+Performance
+
+## Overview of the data
+
+In this exercise we want to explore the relationship between alcohol consumption and academic performance. The dataset was modified to inlcude alc_use and high_use, the first including average alcohol consumption during the week. The latter was constructed so that high alcohol use was set to be over 2. We are only including G3 grades, since this column includes final grades. Note that the data were wrangled with Reijo Sund's code, so the dataset differs from the DataCamp set. 
+
+Let's look at high_use, absences, study time, failures and if there are differences between men and women. I hypothesise high consumption results in lower grades, more absences, less study time and more failures. I also hypothesise there are differences between the sexes.
+
+First we'll cross-tabulate. I excluded absences from cross-tabulation since the results were hard to interpret.
+
+```{r, message = FALSE}
+library(tidyr); library(dplyr); library(ggplot2)
+student_alc %>% group_by(failures, high_use) %>% summarise(count = n(), mean_grade = mean(G3))
+student_alc %>% group_by(studytime, high_use) %>% summarise(count = n(), mean_grade = mean(G3))
+student_alc %>% group_by(sex, high_use) %>% summarise(count = n(), mean_grade = mean(G3))
+```
+We see that 0 failures are associated with lower alcohol consumption (high_use FALSE) and higher grades, while 0 failures and high alcohol consumption is associated with lower mean grade. The relationship is not as straightforward with more failures. Most of the student's study time falls to category 2, where no alcohol is associated with better grades, but we also have a case of high alcohol consumption and higher study time (3-4) with slightly higher grades. Finally, men with high alcohol consumption seem to have lower grades.
+
+Now for some plots, in which we separate by sex.
+
+```{r, message = FALSE}
+ggplot(student_alc, aes(x = high_use, y = G3, col = sex))+ geom_boxplot() + ggtitle("Student grades by alcohol consumption and sex")
+ggplot(student_alc, aes(x = high_use, y = absences, col = sex))+ geom_boxplot() + ggtitle("Student absences by alcohol consumption and sex")
+ggplot(student_alc, aes(x=studytime, fill = sex)) + geom_bar() + ggtitle("Study time by alcohol consumption and sex") + facet_wrap(~high_use)
+ggplot(student_alc, aes(x=failures, fill = sex)) + geom_bar() + ggtitle("Failures by alcohol consumption and sex") + facet_wrap(~high_use)
+
+```
+
+From these plots we see that men's grades are slightly lower when alcohol consumption is high. Absences seem to be slightly more common when alcohol consumption is high with both sexes. The relationship between consumption and study time is again not so straightforward. Failures on the other hand are more common in men when alcohol consumption is high. However, it's good to bear in mind that the total number of high consumers is lower compared to low consumers of alcohol. My initial hypothesis was not too far off, but I'm surprised how different the results are between men and women.
+
+## Logistic regression
+
+We'll run a generalised linear model with binomial distribution. We'll explore the relationship of high alcohol use to the previously discussed variables failures, absences, sex, study time and final year grades (G3).
+
+```{r, message = FALSE}
+# Generalised linear model
+model <- glm(high_use ~ failures + absences + sex + studytime + G3, data = student_alc, family = "binomial")
+
+# Summary of the model
+summary(model)
+```
+We see that high alcohol use is statistically significantly associated with absences and with men. We see men ("sexM") in the coefficients because the model used women ("sexF") as a baseline, so compared to the baseline, male students are significantly associated with high alcohol use. Study time has a weaker relationship with high alcohol use, failures even more so, but the relationship is there. However, grades have no statistical significance in the model, so we'll rerun the model without grades.
+
+```{r, message = FALSE}
+model <- glm(high_use ~ failures + absences + sex + studytime, data = student_alc, family = "binomial")
+summary(model)
+```
+We see that these four variables' statistical significance increased. Also, the intercept became statistically significant, so it's more relevant to compute predictions in future steps. Let's calculate odds ratios and their confidence intervals.
+
+```{r, message = FALSE}
+# Odds ratios (OR)
+OR <- coef(model) %>% exp
+
+# Confidence intervals (CI)
+CI <- confint(model) %>% exp
+
+# Print out the odds ratios with their confidence intervals
+cbind(OR, CI)
+```
+Odds higher than 1 indicate that our explanatory variable has a positive association with our dependent variable (high_use). Therefore, men, absences and failures have a positive assocation but study time doesn't. When we look at the confidence intervals, no interval contains the value 1, which indicates that their p value is lower than 0.05 and we can conclude the null hypothesis (variable has no relationship with high alcohol use) is false with 95 % certainty.
+
+Based on these results, the hypothesis of high alcohol conspumtion resulting in lower grades, more absences, less study time and more failures is false when it comes to grades and study time. However, high consumption has a positive association with more absences and more failures. I also hypothesised there would be a difference between men and women, and this has proven to be correct. We'll run the GLM model one more time to exclude study time, in order increase statiscial significance and predictive power of our model.
+
+```{r, message = FALSE}
+model <- glm(high_use ~ failures + absences + sex, data = student_alc, family = "binomial")
+summary(model)
+OR <- coef(model) %>% exp
+CI <- confint(model) %>% exp
+cbind(OR, CI)
+```
+We see that the statistical significance of failures increased and the odds ratios of failures and sexM increased.
+
+## Prediction and cross-validation
+
+Let's compute some predictions on our data.
+
+```{r}
+# Predict the probability of high_use
+probabilities <- predict(model, type = "response")
+
+# Add the predicted probabilities to student_alc
+student_alc$probability <- probabilities
+
+# Use the probabilities to make a prediction of high_use
+student_alc <- mutate(student_alc, prediction = probability > 0.5)
+
+# Tabulate the target variable versus the predictions
+table(high_use = student_alc$high_use, prediction = student_alc$prediction)
+
+# Tabulate the target variable versus the predictions
+table(high_use = student_alc$high_use, prediction = student_alc$prediction) %>% prop.table %>% addmargins
+```
+Our 2x2 table is a confusion matrix and it shows how well the predictions worked. The first table shows the actual numbers while the second shows prediction probabilites. In the first table, we see that when high_use is FALSE, the model predicted FALSE 252 times, which is correct, and TRUE 7 times, which is incorrect. However, according to the same table, the model was not good at predicting actual high_use, predicting actual TRUE 33 times and incorrect FALSE 78 times. The second table shows the same info with probabilites of the predictions and according to that table, actual FALSE predictions are correct most of the time (p = 0.68), while actual TRUE predictions didn't perform too well (p = 0.089).
+
+Let's perform a 10-fold cross-validation.
+```{r}
+# Define a loss function (average prediction error)
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+# Compute the average number of wrong predictions in the (training) data
+loss_func(student_alc$high_use, prob = student_alc$probability)
+
+# K-fold cross-validation
+library(boot)
+cv <- cv.glm(data = student_alc, cost = loss_func, glmfit = model, K = 10)
+
+# Average number of wrong predictions in the cross validation
+cv$delta[1]
+```
+The lower the average number of wrong predictions, the better. The training data had an average number of ~0.23 and our cross-validated data got an average number of 0.24. The cross-validated number which is slightly better than DataCamp's 0.26 error. However, this can be due to different processing of the data, since the data wrangling process in DataCamp was not perfect and I used the corrected version by Reijo Sund.
