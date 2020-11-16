@@ -1,0 +1,145 @@
+# Chapter 4 - Clustering and classification
+
+## Overview of the data
+Let's download the data for this exercise.
+```{r, message=FALSE}
+library(MASS)
+data("Boston")
+```
+
+The Boston dataset is titled "Housing Values in Suburbs of Boston" so the dataset includes information on variables which influence these values.
+
+```{r, message=FALSE}
+library(dplyr)
+glimpse(Boston)
+```
+
+The dataset has 14 columns and 506 observations. These columns include things like
+
+- Crime rate (crim) per capita
+- Proportion of residential land zoned (zn) for lots over 25,000 sq.ft. (whatever that converts to, Imperial units suck)
+- Nitrogen oxides concentration (nx), parts per million
+- Proportion of owner-occupied units built prior to 1940 (age)
+- Weighed means of distances (dis) to five Boston employment centres
+- Full-value propery-tax rate per $10,000 (tax)
+
+And so on. Let's look at some data summaries.
+```{r,message=FALSE}
+library(ggplot2);library(GGally)
+summary(Boston)
+ggpairs(Boston, upper = list(continuous = "cor_v1_5"))
+```
+
+There's a lot going on in these summaries due to the amount of variables. Some of the variables tend to fall to an extreme in distribution. For example, crime rates are mostly on the low side. And there are many areas with a high proportion of black people. The variable for average number of rooms per dwelling (rm) is the only one that is normally distributed. We also have some binary variables, such as Charles River dummy variable (chas) and index of accessibility to radial highways (rad). Some linear relationships can be seen e.g. between nx and age, as well as zn and dis.
+
+## Scaling the data
+
+We'll scale the data by subtracting the column means from the corresponding columns and divide the difference with standard deviation. It's simple to perform with the scale function.
+
+```{r}
+Boston_scaled <- scale(Boston)
+
+# New summaries of the data after converting to data frame
+Boston_scaled <- as.data.frame(Boston_scaled)
+summary(Boston_scaled)
+ggpairs(Boston_scaled, upper = list(continuous = "cor_v1_5"))
+```
+
+The distributions didn't change but scaling changed the units. Next we'll create a categorical variable of crime rate.
+
+```{r}
+# Creating a quantile vector
+quantiles <- quantile(Boston_scaled$crim)
+
+# Creating the categorical variable
+crime <- cut(Boston_scaled$crim, breaks = quantiles, include.lowest = TRUE, label = c("low", "med_low", "med_high", "high"))
+table(crime)
+```
+Looks good. We'll add this new crime variable to the dataset and remove the old one.
+
+```{r}
+# Remove crim from the dataset
+Boston_scaled <- dplyr::select(Boston_scaled, -crim)
+
+# Add crime
+Boston_scaled <- data.frame(Boston_scaled, crime)
+```
+
+Next we'll create a test and training set. We'll choose 80 % of the data for the training set, so that the remaining 20 % fall to the test set.
+
+```{r}
+# Randomly choose 80% of the scaled Boston rows
+ind <- sample(nrow(Boston_scaled),  size = nrow(Boston_scaled) * 0.8)
+
+# Create a training set
+train <- Boston_scaled[ind,]
+
+# Create a test set
+test <- Boston_scaled[-ind,]
+```
+
+## Linear discriminant analysis
+
+We'll fit a linear discriminant analysis on the training set. For the sake of simplicity, we'll run with two dimensions.
+
+```{r}
+lda_model <- lda(crime ~ ., data = train)
+lda_model
+plot(lda_model, dimen = 2, col = as.numeric(train$crime), pch = as.numeric(train$crime))
+```
+
+We see that most of the high crime rate points separate from the rest. LD1 explains 94 % of the between-group variance.
+
+We'll run a prediction model with LDA. Before that, the crime classes will be removed from the test set.
+```{r}
+# Save the correct classes from test data
+correct_classes <- test$crime
+
+# Remove the crime variable from test data
+test <- dplyr::select(test, -crime)
+
+# Predict with LDA
+lda_predict <- predict(lda_model, newdata = test)
+table(correct = correct_classes, predicted = lda_predict$class)
+```
+
+The model is best at predicting high crime rate, medium high being the second best, medium low third, and low being the most difficult to predict.
+
+## K-means algorithm
+
+Next we'll calculate distances between the observations. The dataset needs to be reloaded, after which we'll scale the data and then calculate the distances. 
+```{r}
+data("Boston")
+Boston_rescaled <- scale(Boston)
+
+# Euclidian distances
+euc_Boston <- dist(Boston_rescaled)
+#Manhattan distances
+man_Boston <- dist(Boston_rescaled, method = "manhattan")
+
+summary(euc_Boston)
+summary(man_Boston)
+```
+Manhattan distances tend to have higher units compared to Euclidian distances.
+
+Next we'll run K-means clustering and try to determine what is the best amount of centers for our data.
+```{r}
+# Define a maximum and calculate the total within sum of squares
+max <- 10
+Twcss <- sapply(1:max, function(k){kmeans(Boston_rescaled, k)$tot.withinss})
+
+# Visualise
+qplot(x = 1:max, y = Twcss, geom = 'line')
+```
+
+There's a radical drop in the within cluster sum of squares at about point 2. We'll use this as an optimal number of clusters.
+
+```{r}
+# K-means clustering
+km <- kmeans(Boston_rescaled, centers = 2)
+
+# Plot the Boston dataset with clusters
+pairs(Boston_rescaled, col = km$cluster)
+```
+
+Based on this, the two cluster optimum didn't come out of nowhere. The two clusters seem to fall into their own groups in many cases like with variables crime, indus, nox, black, lstat, dis. One notable excpetion is the variable chas (Charles River dummy varaible) where the points are mixed when paired with e.g. age and pupil-teacher ratio (ptratio). We can't, however, infer _what_ exactly creates the dissimilarity. That's a whole other exercise.
