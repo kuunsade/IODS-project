@@ -1,0 +1,115 @@
+# Chapter 5 - Dimensionality reduction techniques
+
+## Overview of the human data
+
+```{r, include=FALSE}
+human <- read.table("~/IODS-project/data/human_week5.txt")
+```
+
+```{r, message=FALSE}
+library(dplyr);library(ggplot2);library(GGally);library(corrplot)
+summary(human)
+ggpairs(human, upper = list(continuous = "cor_v1_5"))
+cor(human) %>% corrplot
+```
+
+Our dataset includes information about different countries' human development variables. Most of the variables are numerical, with a few integers among the crowd. Looking at these graphical variable distributions we see that
+
+- In most countries there are more men with secondary education than women (edu_FM)
+- More than half of our world's women participate in labour force (labour_FM)
+- Expected years of education is mostly over 10 years (edu_exp)
+- Life expectancy is as low as 49 years with 83 years being the highest (life_exp)
+- Gross national income is skewed to the left (GNI)
+- Maternal mortality ratio is also highly skewed to the left (mat_mort_ratio)
+- Adolescent birhtrate is mostly skewed the left (adol_birthrate)
+- In most countries about 20 % of the people in the parliament are women (rep_parliament)
+
+If we look at the correlation plot, we see that for example, maternal mortality ratio is positively correlated with adolescent birthrate but negatively correlated with expected years of education, GNI and life expectancy. Parliamentary representation of women is slightly correlated with a higher amount of women participating in labour force, life expectancy and expected years of education. GNI is positively correlated with women in education, expected years of education and life expectancy but negatively correlated with maternal mortality ratio and adolescent birthrate.
+
+## PCA plots
+
+We'll draw a PCA plot with these unstandardised data.
+
+```{r, warning=FALSE}
+pca <- prcomp(human)
+biplot(pca, choices = 1:2, cex = c(0.6, 0.8))
+```
+
+It's basically a mess. GNI is the only thing we can see point to the left (PC2). Let's take a look at the components themselves.
+
+```{r}
+summary(pca)$importance
+```
+We see that PC1's proportion of variance is basically 100 %. Doesn't sound too realistic. We'll standardise the data before making a new PCA plot.
+
+```{r, warning=FALSE}
+human_scaled <- scale(human)
+pca_human <- prcomp(human_scaled)
+
+
+s1 <- summary(pca)
+s2 <- summary(pca_human)
+
+pca_pr1 <- round(100*s1$importance[2, ], digits = 1)
+pca_pr2 <- round(100*s2$importance[2, ], digits = 1)
+pc_lab1 <- paste0(names(pca_pr1), " (", pca_pr1, "%)")
+pc_lab2 <- paste0(names(pca_pr2), " (", pca_pr2, "%)")
+```
+
+
+```{r, warning=FALSE, fig.cap= "PCA plot of human data (no standardisation). As previously mentioned, PC1 causes 100 % of the variance between observations, but no distinct variable can be interpreted as the cause. Gross national income (GNI) points to the left, indicating that PC2 and GNI are linked, however, PC2 accounts for 0 % of the variance. Basically this plot is inconclusive."}
+biplot(pca, choices = 1:2, cex = c(0.6, 0.8), xlab = pc_lab1[1], ylab = pc_lab1[2])
+```
+
+
+```{r, warning=FALSE, fig.cap="PCA plot of human data (standardised). We no longer have a single principal component causing all the variance. PC1 accounts for 54.5 % of variance and PC2 accounts for 15.5 % of variance. Different variables go in groups, with parliamentary representation of women and the proportion of women in labour force pointing up, maternal mortality ratio and adolescent birthrate pointing to the right and GNI, expected years of eduation, life expectancy and proportion of women in secondary education pointing to the left. We also see what drives the countries to different sides of the plot. For example, maternal mortality ratio and adolescent birthrate are important variables for Gambia, proportion of women in labour force for Zimbabwe and parliamentary representation of women for Iceland."}
+biplot(pca_human, choices = 1:2, cex = c(0.6, 0.7), xlab = pc_lab2[1], ylab = pc_lab2[2])
+```
+
+As we see, the two plots are very different. PCA is sensitive to the relative scaling of the original variable features, and larger variance is interpreted as having more importance. The original data variables have different variances which we can see here:
+
+```{r}
+var(human)
+var(human_scaled)
+```
+
+Looking at these tables it's no wonder GNI was the only one that had a distinct arrow in the first PCA plot since GNI variance is huge. The variances are much more even in the second summary. If we compare the standardised PCA plot to the previously shown correlation plot, the results make sense. For example, we already established that maternal mortality ratio and adolescent birthrate are correlated. These two variables, as well as life expectancy, expected years of education, proportion of women in secondary education and GNI mostly belong to PC2. Labour force and parliamentary representation, on the other hand, mostly belong to PC1. Since PC1 accounts for 54.5 % of the whole variance, we can conclude parliamentary representation of women and proportion of women in labour force creates significant differences between the countries. GNI, life expectancy, expected years of education and proportion of women in secondary education are and "opposite force" to maternal mortality ratio and adolescent birthrate. More education goes with higher life expectancy, and if women gain access to secondary education, they are not as likely to stay home and give birth at a young age. Also, women are less likely to die to childbirth if they have access to secondary education. More education correlating with GNI makes sense, since if there are more educated people in the country, people have access to more jobs and there's more money flowing in the country.
+
+## The tea dataset
+
+We'll move on to the tea dataset from Factominer. Let's explore the data.
+```{r, warning=FALSE}
+library(FactoMineR);library(tidyr)
+data(tea)
+
+glimpse(tea)
+
+#First 18 variables
+gather(tea[,1:18]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5))
+
+# Last 18 variables
+gather(tea[,19:36]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 5))
+```
+
+Most of the variables are factors, with one integer variable (age). The dataset was construced by asking 300 individuals (rows) how they drink tea, how they perceive their products along with personal questions (altogether 36 questions, columns).
+
+We'll plot the data with MCA. First, we'll subset a bit to make the analysis a bit easier.
+
+```{r}
+# Column names to keep in the dataset
+keep_columns <- c("Tea", "How", "how", "sugar", "where", "age_Q")
+tea_time <- select(tea, one_of(keep_columns))
+
+mca <- MCA(tea_time, graph = FALSE)
+summary(mca)
+```
+
+There are altogether 14 dimensions. The first three dimensions retain 10-13 % of variance each. We only see the first 10 individuals (rows) and their contribution to the dimensiona (ctr) as well as squared correlations to the dimension (cos2). Same with the first 10 categories and their relationship to the first dimension. Lastly, we have the categorical variables and their squared correlation to each dimension. If these values are close to 1, there is a strong link with the variable and the dimension. We see the variable "where" has the strongest link to dimension 1, with "how" being quite close as a second and "age_Q" as a third. Additionally, the variable "where" has the strongest relationship with dimension 2 and the second "How" is has a stronger link with dimension 2 compared to dimension 1.
+
+```{r,fig.cap="MCA plot of the subsetted tea data. The closer the variables, the more similar they are. Buying tea from specialised tea shops is similar to consuming unpackaged tea, which makes sense, since tea shops usually sell unpackaged tea. They both have s trong relationship to dimension 1. Green tea consumers are probably more likely to buy from unpackaged tea from tea shops. Tea consuption is different in the age groups. For example, 15-24 year olds are quite close to tea bag, Earl Grey and chain stores. Presumably chain stores mostly sell tea bags (instead of unpackaged) and Earl Grey is a popular option. Also, chain store Early Grey tea bags are likely cheap, and 15-24 year olds usually don't have that high of an income. 60+ year olds are more likely to drink black tea. Drinking tea as it is (=alone) or with sugar are close to the centre, which indicates that consuming tea either of these ways vary enough between all subjects for those not to be pulled towards a certain dimension too strongly. No sugar, milk and lemon are a bit farther from the centre, but still quite close. Consuming tea in an other way is far from other categories, so they are a certain group of people."}
+
+# Plot function for MCA, hide individual observations
+plot.MCA(mca, invisible = c("ind"))
+```
+
+
