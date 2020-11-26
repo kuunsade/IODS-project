@@ -98,7 +98,7 @@ We'll plot the data with MCA. First, we'll subset a bit to make the analysis a b
 ```{r}
 # Column names to keep in the dataset
 keep_columns <- c("Tea", "How", "how", "sugar", "where", "age_Q")
-tea_time <- select(tea, one_of(keep_columns))
+tea_time <- dplyr::select(tea, one_of(keep_columns))
 
 mca <- MCA(tea_time, graph = FALSE)
 summary(mca)
