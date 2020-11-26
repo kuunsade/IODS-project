@@ -6,7 +6,7 @@
 human <- read.table("~/IODS-project/data/human_week5.txt")
 ```
 
-```{r, message=FALSE}
+```{r, message=FALSE, fig.height= 6, fig.width= 7}
 library(dplyr);library(ggplot2);library(GGally);library(corrplot)
 summary(human)
 ggpairs(human, upper = list(continuous = "cor_v1_5"))
@@ -30,7 +30,7 @@ If we look at the correlation plot, we see that for example, maternal mortality 
 
 We'll draw a PCA plot with these unstandardised data.
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, fig.height= 5, fig.width= 6,}
 pca <- prcomp(human)
 biplot(pca, choices = 1:2, cex = c(0.6, 0.8))
 ```
@@ -57,12 +57,12 @@ pc_lab2 <- paste0(names(pca_pr2), " (", pca_pr2, "%)")
 ```
 
 
-```{r, warning=FALSE, fig.cap= "PCA plot of human data (no standardisation). As previously mentioned, PC1 causes 100 % of the variance between observations, but no distinct variable can be interpreted as the cause. Gross national income (GNI) points to the left, indicating that PC2 and GNI are linked, however, PC2 accounts for 0 % of the variance. Basically this plot is inconclusive."}
+```{r, warning=FALSE, fig.height= 5, fig.width= 6, fig.cap= "PCA plot of human data (no standardisation). As previously mentioned, PC1 causes 100 % of the variance between observations, but no distinct variable can be interpreted as the cause. Gross national income (GNI) points to the left, indicating that PC2 and GNI are linked, however, PC2 accounts for 0 % of the variance. Basically this plot is inconclusive."}
 biplot(pca, choices = 1:2, cex = c(0.6, 0.8), xlab = pc_lab1[1], ylab = pc_lab1[2])
 ```
 
 
-```{r, warning=FALSE, fig.cap="PCA plot of human data (standardised). We no longer have a single principal component causing all the variance. PC1 accounts for 54.5 % of variance and PC2 accounts for 15.5 % of variance. Different variables go in groups, with parliamentary representation of women and the proportion of women in labour force pointing up, maternal mortality ratio and adolescent birthrate pointing to the right and GNI, expected years of eduation, life expectancy and proportion of women in secondary education pointing to the left. We also see what drives the countries to different sides of the plot. For example, maternal mortality ratio and adolescent birthrate are important variables for Gambia, proportion of women in labour force for Zimbabwe and parliamentary representation of women for Iceland."}
+```{r, warning=FALSE, fig.height= 5, fig.width= 6, fig.cap="PCA plot of human data (standardised). We no longer have a single principal component causing all the variance. PC1 accounts for 54.5 % of variance and PC2 accounts for 15.5 % of variance. Different variables go in groups, with parliamentary representation of women and the proportion of women in labour force pointing up, maternal mortality ratio and adolescent birthrate pointing to the right and GNI, expected years of eduation, life expectancy and proportion of women in secondary education pointing to the left. We also see what drives the countries to different sides of the plot. For example, maternal mortality ratio and adolescent birthrate are important variables for Gambia, proportion of women in labour force for Zimbabwe and parliamentary representation of women for Iceland."}
 biplot(pca_human, choices = 1:2, cex = c(0.6, 0.7), xlab = pc_lab2[1], ylab = pc_lab2[2])
 ```
 
@@ -78,7 +78,7 @@ Looking at these tables it's no wonder GNI was the only one that had a distinct 
 ## The tea dataset
 
 We'll move on to the tea dataset from Factominer. Let's explore the data.
-```{r, warning=FALSE}
+```{r, warning=FALSE, fig.height = 6}
 library(FactoMineR);library(tidyr)
 data(tea)
 
@@ -106,7 +106,7 @@ summary(mca)
 
 There are altogether 14 dimensions. The first three dimensions retain 10-13 % of variance each. We only see the first 10 individuals (rows) and their contribution to the dimensiona (ctr) as well as squared correlations to the dimension (cos2). Same with the first 10 categories and their relationship to the first dimension. Lastly, we have the categorical variables and their squared correlation to each dimension. If these values are close to 1, there is a strong link with the variable and the dimension. We see the variable "where" has the strongest link to dimension 1, with "how" being quite close as a second and "age_Q" as a third. Additionally, the variable "where" has the strongest relationship with dimension 2 and the second "How" is has a stronger link with dimension 2 compared to dimension 1.
 
-```{r,fig.cap="MCA plot of the subsetted tea data. The closer the variables, the more similar they are. Buying tea from specialised tea shops is similar to consuming unpackaged tea, which makes sense, since tea shops usually sell unpackaged tea. They both have s trong relationship to dimension 1. Green tea consumers are probably more likely to buy from unpackaged tea from tea shops. Tea consuption is different in the age groups. For example, 15-24 year olds are quite close to tea bag, Earl Grey and chain stores. Presumably chain stores mostly sell tea bags (instead of unpackaged) and Earl Grey is a popular option. Also, chain store Early Grey tea bags are likely cheap, and 15-24 year olds usually don't have that high of an income. 60+ year olds are more likely to drink black tea. Drinking tea as it is (=alone) or with sugar are close to the centre, which indicates that consuming tea either of these ways vary enough between all subjects for those not to be pulled towards a certain dimension too strongly. No sugar, milk and lemon are a bit farther from the centre, but still quite close. Consuming tea in an other way is far from other categories, so they are a certain group of people."}
+```{r,fig.width=6, fig.height=5,fig.cap="MCA plot of the subsetted tea data. The closer the variables, the more similar they are. Buying tea from specialised tea shops is similar to consuming unpackaged tea, which makes sense, since tea shops usually sell unpackaged tea. They both have a strong relationship to dimension 1. Green tea consumers are probably more likely to buy from unpackaged tea from tea shops. Tea consuption is different in the age groups. For example, 15-24 year olds are quite close to tea bag, Earl Grey and chain stores. Presumably chain stores mostly sell tea bags (instead of unpackaged) and Earl Grey is a popular option. Also, chain store Early Grey tea bags are likely cheap, and 15-24 year olds usually don't have that high of an income. 60+ year olds are more likely to drink black tea. Drinking tea as it is (=alone) or with sugar are close to the centre, which indicates that consuming tea either of these ways vary enough between all subjects for those not to be pulled towards a certain dimension too strongly. No sugar, milk and lemon are a bit farther from the centre, but still quite close. Consuming tea in an other way is far from other categories, so they are a certain group of people."}
 
 # Plot function for MCA, hide individual observations
 plot.MCA(mca, invisible = c("ind"))
